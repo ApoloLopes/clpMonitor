@@ -1,0 +1,6 @@
+github.com/danomagnum/gologix v0.44.0-beta h1:QrkDcR4ZFmtZ2lhWpdiE+8025nTwO4BulJkPZV+wsp8=
+github.com/danomagnum/gologix v0.44.0-beta/go.mod h1:a0mVZ0+1vBg6R56BLSk68iO9XQGHyqEkyh33OCCIr9k=
+github.com/npat-efault/crc16 v0.0.0-20161013170008-4128ccbe47c3 h1:LreEMrgwmSTNPbtao3jPZjwrjRYrlYTDg0kTMPOgSHg=
+github.com/npat-efault/crc16 v0.0.0-20161013170008-4128ccbe47c3/go.mod h1:1E9pLoYv14Va+AZbH8ywpTseVh5R4rwkRla445GfE1U=
+github.com/robinson/gos7 v0.0.0-20260924061028-c54e650665ba h1:cItftzoNOHHGCa/jLwo4wkschqOPMUFy68Oj/lAZk/E=
+github.com/robinson/gos7 v0.0.0-20260924061028-c54e650665ba/go.mod h1:AMHIeh1KJ7Xa2RVOMHdv9jXKrpw0D4EWGGQMHLb2doc=
