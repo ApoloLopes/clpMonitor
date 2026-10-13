@@ -1,0 +1,15 @@
+# Binários compilados
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Arquivos de teste e profile
+*.test
+*.out
+
+# IDEs (VSCode, Goland)
+.vscode/
+.idea/
