@@ -1,39 +1,64 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
 
-	"github.com/ApoloLopes/clpMonitor/internal/plc" // Ajuste para o nome do seu módulo
+	"github.com/ApoloLopes/clpMonitor/internal/models"
+	"github.com/ApoloLopes/clpMonitor/internal/plc"
 )
 
 func main() {
-	fmt.Println("Iniciando Gateway PLC...")
-
-	// Instancia o driver (IP, Rack, Slot)
-	// Para S7-1200/1500 o padrão é Rack 0, Slot 1. Para S7-300 geralmente é Rack 0, Slot 2.
-	s7 := plc.NewS7Driver("192.168.0.10", 0, 1)
-
-	err := s7.Connect()
-	if err != nil {
-		log.Fatalf("Erro fatal: %v", err)
+	device := models.Device{
+		ID:        "PLC_01",
+		Name:      "Extrusora",
+		Protocol:  "s7",
+		IPAddress: "127.0.0.1",
+		Rack:      0,
+		Slot:      2,
 	}
-	defer s7.Disconnect()
 
-	fmt.Println("Conectado ao CLP Siemens com sucesso!")
+	// Criamos a lista de variáveis que queremos monitorar
+	tags := []models.Tag{
+		{ID: "T1", Name: "Temperatura", DBNumber: 1, Offset: 4, DataType: "REAL"},
+		{ID: "T2", Name: "Motor_Ligado", DBNumber: 1, Offset: 0, Bit: 0, DataType: "BOOL"},
+		{ID: "T3", Name: "Velocidade", DBNumber: 1, Offset: 2, DataType: "INT"},
+	}
 
-	// Loop de varredura (Scan)
+	// Injeção de dependência: instanciamos o S7 mas o tratamos como um Driver genérico
+	var driver plc.Driver = plc.NewS7Driver(device)
+
+	// Contexto de 3 segundos para abortar a conexão se o cabo estiver desconectado
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	fmt.Println("Conectando ao CLP...")
+	if err := driver.Connect(ctx); err != nil {
+		log.Fatalf("Erro fatal de conexão: %v", err)
+	}
+	defer driver.Disconnect()
+
+	fmt.Println("Conectado! Iniciando leitura...")
+
+	// Loop de varredura
 	for {
-		// Exemplo: Lendo a variável tipo REAL no offset 4 da DB 1 (DB1.DBD4)
-		value, err := s7.ReadDBReal(1, 4)
+		err := driver.ReadTags(&tags)
 		if err != nil {
-			log.Printf("Falha na leitura: %v", err)
-		} else {
-			fmt.Printf("Valor atual da DB1.DBD4: %.2f\n", value)
+			log.Printf("Erro geral de leitura: %v", err)
 		}
 
-		// Pausa de 500ms entre as leituras para não sobrecarregar a rede
-		time.Sleep(500 * time.Millisecond)
+		// Imprimimos o resultado de cada tag
+		for _, tag := range tags {
+			if tag.Quality {
+				fmt.Printf("[%s] %s: %v\n", tag.Timestamp.Format("15:04:05"), tag.Name, tag.Value)
+			} else {
+				fmt.Printf("[%s] %s: BAD QUALITY (Falha na leitura)\n", tag.Timestamp.Format("15:04:05"), tag.Name)
+			}
+		}
+
+		fmt.Println("----------------------")
+		time.Sleep(1 * time.Second)
 	}
 }
