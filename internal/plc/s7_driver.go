@@ -26,8 +26,8 @@ func NewS7Driver(device models.Device) *S7Driver {
 
 func (s *S7Driver) Connect(ctx context.Context) error {
 	s.handler = gos7.NewTCPClientHandler(s.device.IPAddress, s.device.Rack, s.device.Slot)
-	s.handler.Timeout = 2 * time.Second
-	s.handler.IdleTimeout = 2 * time.Second
+	s.handler.Timeout = 5 * time.Second
+	s.handler.IdleTimeout = 30 * time.Second
 
 	// Canais para gerenciar o timeout da conexão usando o Context
 	errChan := make(chan error, 1)
