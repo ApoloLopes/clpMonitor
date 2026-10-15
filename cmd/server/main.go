@@ -8,6 +8,7 @@ import (
 	"github.com/ApoloLopes/clpMonitor/internal/api"
 	"github.com/ApoloLopes/clpMonitor/internal/models"
 	"github.com/ApoloLopes/clpMonitor/internal/plc"
+	"github.com/ApoloLopes/clpMonitor/internal/storage"
 	"github.com/ApoloLopes/clpMonitor/internal/worker"
 
 	"github.com/gofiber/fiber/v2"
@@ -15,42 +16,60 @@ import (
 )
 
 func main() {
-	// 1. Configuração (Hardcoded por enquanto)
-	device := models.Device{
-		ID: "PLC_01", Name: "Extrusora", Protocol: "s7", IPAddress: "127.0.0.1", Rack: 0, Slot: 2,
+	// 1. Inicializa o Armazenamento Persistente
+	store, err := storage.NewJSONStorage("gateway_config.json")
+	if err != nil {
+		log.Fatalf("Erro ao iniciar armazenamento: %v", err)
 	}
 
-	tags := []models.Tag{
-		{ID: "T1", Name: "Temperatura", DBNumber: 1, Offset: 4, DataType: "REAL"},
-		{ID: "T2", Name: "Motor_Ligado", DBNumber: 1, Offset: 0, Bit: 0, DataType: "BOOL"},
-		{ID: "T3", Name: "Velocidade", DBNumber: 1, Offset: 2, DataType: "INT"},
+	cfg := store.GetConfig()
+
+	// Apenas para conveniência no primeiro arranque: se não houver dispositivos, cria um por defeito
+	if len(cfg.Devices) == 0 {
+		fmt.Println("Ficheiro JSON vazio. A injetar configuração inicial do simulador...")
+
+		device := models.Device{ID: "PLC_01", Name: "Extrusora", Protocol: "s7", IPAddress: "127.0.0.1", Rack: 0, Slot: 2}
+		store.AddDevice(device)
+
+		store.AddTag(models.Tag{ID: "T1", Name: "Temperatura", DBNumber: 1, Offset: 4, DataType: "REAL"})
+		store.AddTag(models.Tag{ID: "T2", Name: "Motor_Ligado", DBNumber: 1, Offset: 0, Bit: 0, DataType: "BOOL"})
+		store.AddTag(models.Tag{ID: "T3", Name: "Velocidade", DBNumber: 1, Offset: 2, DataType: "INT"})
+
+		cfg = store.GetConfig() // Atualiza a variável com a configuração recém-criada
 	}
 
 	// 2. Inicializa o Hub WebSocket
 	hub := api.NewWSHub()
 	go hub.Run()
 
-	// 3. Inicializa o Driver e Worker do CLP
-	var driver plc.Driver = plc.NewS7Driver(device)
-	if err := driver.Connect(context.Background()); err != nil {
-		log.Printf("Aviso: Não conectou no CLP de imediato: %v\n", err)
+	// 3. Inicia os Workers para todos os dispositivos configurados no JSON
+	// Numa arquitetura real, teríamos um gestor de workers para adicionar/remover dinamicamente sem reiniciar
+	for _, dev := range cfg.Devices {
+		// Filtra as tags que pertencem apenas a este dispositivo
+		// (Para já usamos todas as tags para o PLC único, mas no futuro precisarás de um campo DeviceID na estrutura Tag)
+
+		var driver plc.Driver = plc.NewS7Driver(dev)
+		if err := driver.Connect(context.Background()); err != nil {
+			log.Printf("Aviso: Não conectou no CLP %s de imediato: %v\n", dev.Name, err)
+		}
+
+		plcWorker := worker.NewPollingWorker(dev, driver, cfg.Tags, 500)
+		go plcWorker.Start(context.Background())
+
+		// Goroutine ponte para este worker específico
+		go func(w *worker.PollingWorker) {
+			for data := range w.DataChannel {
+				hub.Broadcast <- data
+			}
+		}(plcWorker)
 	}
 
-	plcWorker := worker.NewPollingWorker(device, driver, tags, 500)
-	go plcWorker.Start(context.Background())
-
-	// 4. Goroutine ponte: Escuta o Worker e manda para o Hub WebSocket
-	go func() {
-		for data := range plcWorker.DataChannel {
-			// Repassa as tags lidas para todos os clientes WebSocket conectados
-			hub.Broadcast <- data
-		}
-	}()
-
-	// 5. Configuração do Servidor Web (Fiber)
+	// 4. Configuração do Servidor Web
 	app := fiber.New()
 
-	// Middleware para garantir que a rota /ws exija Upgrade para WebSocket
+	// Regista as rotas REST da API
+	api.SetupRoutes(app, store)
+
 	app.Use("/ws", func(c *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(c) {
 			c.Locals("allowed", true)
@@ -59,15 +78,9 @@ func main() {
 		return fiber.ErrUpgradeRequired
 	})
 
-	// Rota do WebSocket
 	app.Get("/ws", websocket.New(hub.HandleWS))
-
-	// Rota para testarmos rapidamente se o servidor subiu
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Servidor PLC Gateway rodando! Acesse via WebSocket em ws://localhost:8080/ws")
-	})
-	// Serve todos os arquivos da pasta "web" na raiz do site
 	app.Static("/", "./web")
+
 	fmt.Println("Iniciando servidor web na porta 8080...")
 	log.Fatal(app.Listen(":8080"))
 }
