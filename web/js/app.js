@@ -86,6 +86,7 @@ btnSaveTag.addEventListener('click', () => {
     const tagData = {
         id: document.getElementById('tagId').value,
         name: document.getElementById('tagName').value,
+        address: document.getElementById('tagName').value,
         db_number: parseInt(document.getElementById('tagDb').value),
         offset: parseInt(document.getElementById('tagOffset').value),
         data_type: document.getElementById('tagDataType').value,
@@ -111,6 +112,47 @@ btnSaveTag.addEventListener('click', () => {
             modalInstance.hide();
         } else {
             alert('Erro ao guardar a Tag. Verifique o console.');
+            console.error('Resposta da API:', response);
+        }
+    })
+    .catch(error => {
+        console.error('Erro de rede ao tentar guardar:', error);
+        alert('Erro de comunicação com o servidor.');
+    });
+});
+
+// --- Lógica de Configuração de Dispositivos ---
+
+const btnSaveDevice = document.getElementById('btnSaveDevice');
+
+btnSaveDevice.addEventListener('click', () => {
+    const deviceData = {
+        id: document.getElementById('devId').value,
+        name: document.getElementById('devName').value,
+        protocol: document.getElementById('devProtocol').value,
+        ip_address: document.getElementById('devIp').value,
+        rack: parseInt(document.getElementById('devRack').value) || 0,
+        slot: parseInt(document.getElementById('devSlot').value) || 0
+    };
+
+    fetch('/api/devices', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(deviceData)
+    })
+    .then(response => {
+        if (response.ok) {
+            // Limpa o formulário e fecha a modal
+            document.getElementById('formAddDevice').reset();
+            const modalElement = document.getElementById('addDeviceModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            modalInstance.hide();
+            
+            // O Hot-Reload do backend já se vai encarregar de reiniciar os workers!
+        } else {
+            alert('Erro ao guardar o Dispositivo. Verifique o console.');
             console.error('Resposta da API:', response);
         }
     })

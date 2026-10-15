@@ -5,6 +5,7 @@ import "time"
 // Tag representa uma variável unificada para qualquer marca de CLP
 type Tag struct {
 	ID        string      `json:"id"`
+	DeviceID  string      `json:"device_id"`
 	Name      string      `json:"name"`
 	Address   string      `json:"address"`   // Útil para Rockwell (ex: "Motor_Speed")
 	DBNumber  int         `json:"db_number"` // Específico para Siemens

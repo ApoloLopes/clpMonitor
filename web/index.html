@@ -18,6 +18,10 @@
     <div class="container">
         <span class="navbar-brand mb-0 h1">🏭 Gateway OT/IT</span>
         <div class="d-flex align-items-center gap-3">
+            <!-- NOVO: Botão para Adicionar Dispositivo -->
+            <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
+            + Adicionar Dispositivo
+            </button>
             <!-- Botão que abre a Modal -->
             <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#addTagModal">
                 + Adicionar Tag
@@ -82,6 +86,60 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
         <button type="button" class="btn btn-primary" id="btnSaveTag">Guardar Tag</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para Adicionar Dispositivo -->
+<div class="modal fade" id="addDeviceModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Novo Dispositivo (CLP)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formAddDevice">
+          <div class="row mb-3">
+            <div class="col">
+              <label class="form-label">ID do Dispositivo</label>
+              <input type="text" class="form-control" id="devId" placeholder="Ex: PLC_02" required>
+            </div>
+            <div class="col">
+              <label class="form-label">Nome / Máquina</label>
+              <input type="text" class="form-control" id="devName" placeholder="Ex: Misturador" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Protocolo / Marca</label>
+            <select class="form-select" id="devProtocol" required>
+              <option value="s7">Siemens (S7Comm)</option>
+              <option value="cip">Rockwell (CIP / EtherNet/IP) - Em breve</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Endereço IP</label>
+            <input type="text" class="form-control" id="devIp" placeholder="192.168.0.10" required>
+          </div>
+          <div class="row mb-3" id="siemensConfig">
+            <div class="col">
+              <label class="form-label">Rack</label>
+              <input type="number" class="form-control" id="devRack" value="0">
+            </div>
+            <div class="col">
+              <label class="form-label">Slot</label>
+              <input type="number" class="form-control" id="devSlot" value="1">
+            </div>
+          </div>
+          <div class="text-muted small">
+            * Para S7-1200/1500, usa Rack 0, Slot 1. Para S7-300, geralmente Rack 0, Slot 2.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-info text-white" id="btnSaveDevice">Guardar Dispositivo</button>
       </div>
     </div>
   </div>

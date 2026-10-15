@@ -7,23 +7,33 @@
       "ip_address": "127.0.0.1",
       "rack": 0,
       "slot": 2
+    },
+    {
+      "id": "RockWellCLP",
+      "name": "Forno",
+      "protocol": "cip",
+      "ip_address": "127.0.0.2",
+      "rack": 0,
+      "slot": 1
     }
   ],
   "tags": [
     {
       "id": "T1",
+      "device_id": "PLC_01",
       "name": "Temperatura",
       "address": "",
       "db_number": 1,
       "offset": 4,
       "bit": 0,
       "data_type": "REAL",
-      "value": 85.8,
+      "value": 314.8,
       "quality": true,
-      "timestamp": "2026-10-15T01:02:21.8449253-03:00"
+      "timestamp": "2026-10-15T01:42:04.3212879-03:00"
     },
     {
       "id": "T2",
+      "device_id": "PLC_01",
       "name": "Motor_Ligado",
       "address": "",
       "db_number": 1,
@@ -32,10 +42,11 @@
       "data_type": "BOOL",
       "value": true,
       "quality": true,
-      "timestamp": "2026-10-15T01:02:21.8449253-03:00"
+      "timestamp": "2026-10-15T01:42:04.3218489-03:00"
     },
     {
       "id": "T3",
+      "device_id": "PLC_01",
       "name": "Velocidade",
       "address": "",
       "db_number": 1,
@@ -44,26 +55,41 @@
       "data_type": "INT",
       "value": 1750,
       "quality": true,
-      "timestamp": "2026-10-15T01:02:21.8449253-03:00"
+      "timestamp": "2026-10-15T01:42:04.3218489-03:00"
     },
     {
       "id": "T5",
+      "device_id": "PLC_01",
       "name": "Temperatura_2",
       "address": "",
       "db_number": 1,
       "offset": 8,
       "bit": 0,
       "data_type": "REAL",
-      "value": 276.5,
+      "value": 139.1,
       "quality": true,
-      "timestamp": "2026-10-15T01:02:21.8449253-03:00"
+      "timestamp": "2026-10-15T01:42:04.3218489-03:00"
     },
     {
       "id": "T6",
+      "device_id": "PLC_01",
       "name": "Temperatura 3",
       "address": "",
       "db_number": 1,
       "offset": 12,
+      "bit": 0,
+      "data_type": "REAL",
+      "value": 408.1,
+      "quality": true,
+      "timestamp": "2026-10-15T01:42:04.3224497-03:00"
+    },
+    {
+      "id": "TR1",
+      "device_id": "RockWellCLP",
+      "name": "Temperatura_Forno",
+      "address": "Temperatura_Forno",
+      "db_number": 1,
+      "offset": 0,
       "bit": 0,
       "data_type": "REAL",
       "value": null,

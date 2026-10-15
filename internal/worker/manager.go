@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/ApoloLopes/clpMonitor/internal/api"
+	"github.com/ApoloLopes/clpMonitor/internal/models"
 	"github.com/ApoloLopes/clpMonitor/internal/plc"
 	"github.com/ApoloLopes/clpMonitor/internal/storage"
 )
@@ -34,19 +35,33 @@ func (m *Manager) StartAll() {
 	m.cancelFunc = cancel
 
 	for _, dev := range cfg.Devices {
-		// Instancia o driver correto (para já temos o S7)
+		// Instancia o driver correto consoante o protocolo
 		var driver plc.Driver
-		if dev.Protocol == "s7" {
+
+		switch dev.Protocol {
+		case "s7":
 			driver = plc.NewS7Driver(dev)
+		case "cip":
+			driver = plc.NewRockwellDriver(dev) // <- Novo Driver Rockwell adicionado!
+		default:
+			log.Printf("[Manager] Aviso: Protocolo desconhecido '%s' no dispositivo %s\n", dev.Protocol, dev.Name)
+			continue
 		}
 
-		// Tenta conectar
+		// Tenta conectar...
 		if err := driver.Connect(ctx); err != nil {
 			log.Printf("[Manager] Aviso: Falha ao conectar no CLP %s: %v\n", dev.Name, err)
 		}
 
-		// Cria e inicia o Worker
-		w := NewPollingWorker(dev, driver, cfg.Tags, 500)
+		var deviceTags []models.Tag
+		for _, t := range cfg.Tags {
+			if t.DeviceID == dev.ID {
+				deviceTags = append(deviceTags, t)
+			}
+		}
+
+		// ATENÇÃO: Passa a lista filtrada (deviceTags) em vez da lista global (cfg.Tags)
+		w := NewPollingWorker(dev, driver, deviceTags, 500)
 		go w.Start(ctx)
 
 		// Goroutine ponte: lê do Worker e envia para o WebSocket
