@@ -9,7 +9,6 @@ import (
 	"github.com/robinson/gos7"
 )
 
-// Garantir em tempo de compilação que S7Driver implementa plc.Driver
 var _ Driver = (*S7Driver)(nil)
 
 type S7Driver struct {
@@ -29,7 +28,6 @@ func (s *S7Driver) Connect(ctx context.Context) error {
 	s.handler.Timeout = 5 * time.Second
 	s.handler.IdleTimeout = 30 * time.Second
 
-	// Canais para gerenciar o timeout da conexão usando o Context
 	errChan := make(chan error, 1)
 
 	go func() {
@@ -38,7 +36,7 @@ func (s *S7Driver) Connect(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		return fmt.Errorf("timeout ou cancelamento ao conectar no S7 %s", s.device.IPAddress)
+		return fmt.Errorf("timeout ao conectar no S7 %s", s.device.IPAddress)
 	case err := <-errChan:
 		if err != nil {
 			return fmt.Errorf("falha ao conectar: %w", err)
@@ -52,46 +50,76 @@ func (s *S7Driver) Connect(ctx context.Context) error {
 func (s *S7Driver) Disconnect() error {
 	if s.handler != nil {
 		s.handler.Close()
+		s.handler = nil
 	}
+	// FUNDAMENTAL: Avisar a memória que o cliente morreu
+	s.client = nil
 	return nil
 }
 
 func (s *S7Driver) ReadTags(tags *[]models.Tag) error {
-	var helper gos7.Helper
+	// 1. AUTO-RECONNECT: Se o cliente for nulo (iniciou offline ou a rede caiu antes)
+	if s.client == nil {
+		// Dá apenas 2 segundos para tentar reconectar e não bloquear os outros Workers
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
 
-	// Itera sobre as tags por referência para atualizar seus valores originais
+		if err := s.Connect(ctx); err != nil {
+			// Continua offline: marca todas as tags como má qualidade e aborta a leitura
+			for i := range *tags {
+				(*tags)[i].Quality = false
+				(*tags)[i].Timestamp = time.Now()
+			}
+			return fmt.Errorf("clp offline, a aguardar reconexão na próxima varredura")
+		}
+	}
+
+	var helper gos7.Helper
+	var connectionDropped bool
+
 	for i := range *tags {
 		tag := &(*tags)[i]
 		tag.Timestamp = time.Now()
 
-		// Determina o tamanho do buffer baseado no tipo de dado
+		// Se a conexão caiu a meio do loop, já nem tenta ler as restantes
+		if connectionDropped || s.client == nil {
+			tag.Quality = false
+			continue
+		}
+
 		var size int
 		switch tag.DataType {
 		case "BOOL":
 			size = 1
 		case "INT":
-			size = 2 // Int no S7 tem 16 bits (2 bytes)
+			size = 2
 		case "REAL":
-			size = 4 // Real no S7 tem 32 bits (4 bytes)
+			size = 4
 		default:
 			tag.Quality = false
 			continue
 		}
 
 		buffer := make([]byte, size)
+
+		// 2. LÊ DO CLP
 		err := s.client.AGReadDB(tag.DBNumber, tag.Offset, size, buffer)
 
+		// 3. DETETA QUEDA DE REDE
 		if err != nil {
 			tag.Quality = false
+			connectionDropped = true
+
+			// Destrói o cliente imediatamente. Isto obriga o código a passar pelo
+			// passo de Auto-Reconnect no início da próxima vez que esta função for chamada.
+			s.Disconnect()
 			continue
 		}
 
 		tag.Quality = true
 
-		// Conversão dinâmica
 		switch tag.DataType {
 		case "BOOL":
-			// Converte tag.Bit para uint e recebe o retorno diretamente
 			value := helper.GetBoolAt(buffer[0], uint(tag.Bit))
 			tag.Value = value
 		case "INT":

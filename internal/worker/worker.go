@@ -50,8 +50,6 @@ func (w *PollingWorker) Start(ctx context.Context) {
 			err := w.Driver.ReadTags(&w.Tags)
 			if err != nil {
 				log.Printf("[Worker %s] Erro de leitura: %v", w.Device.Name, err)
-				// Aqui você poderia implementar uma lógica para tentar reconectar
-				continue
 			}
 
 			// Cria uma cópia das tags para enviar pelo canal (evita condição de corrida)
