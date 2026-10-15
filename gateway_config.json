@@ -95,6 +95,19 @@
       "value": null,
       "quality": false,
       "timestamp": "0001-01-01T00:00:00Z"
+    },
+    {
+      "id": "T10",
+      "device_id": "RockWellCLP",
+      "name": "Pressao_Linha",
+      "address": "Pressao_Linha",
+      "db_number": 1,
+      "offset": 0,
+      "bit": 0,
+      "data_type": "REAL",
+      "value": null,
+      "quality": false,
+      "timestamp": "0001-01-01T00:00:00Z"
     }
   ]
 }

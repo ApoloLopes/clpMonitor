@@ -5,6 +5,41 @@ let socket = new WebSocket(wsUrl);
 const statusDot = document.getElementById('ws-status');
 const tagsContainer = document.getElementById('tags-container');
 
+// --- Lógica de Preenchimento Dinâmico ---
+
+const tagDeviceSelect = document.getElementById('tagDevice');
+
+// Função para buscar dispositivos da API e preencher o select
+function loadDevicesForDropdown() {
+    fetch('/api/config')
+        .then(response => response.json())
+        .then(data => {
+            tagDeviceSelect.innerHTML = ''; // Limpa opções antigas
+
+            if (data.devices && data.devices.length > 0) {
+                data.devices.forEach(dev => {
+                    const option = document.createElement('option');
+                    option.value = dev.id;
+                    // Mostra o Nome, Protocolo e IP para facilitar a identificação
+                    option.textContent = `${dev.name} (${dev.protocol.toUpperCase()} - ${dev.ip_address})`;
+                    tagDeviceSelect.appendChild(option);
+                });
+            } else {
+                tagDeviceSelect.innerHTML = '<option value="" disabled selected>Nenhum dispositivo cadastrado</option>';
+            }
+        })
+        .catch(error => console.error('Erro ao carregar dispositivos:', error));
+}
+
+// Quando a página terminar de carregar, executa a busca
+document.addEventListener('DOMContentLoaded', () => {
+    loadDevicesForDropdown();
+});
+
+// Para garantir que a lista esteja sempre atualizada, recarrega também sempre que o utilizador abrir a Modal de Tags
+document.getElementById('addTagModal').addEventListener('show.bs.modal', loadDevicesForDropdown);
+
+
 // Evento: Conexão estabelecida com o Fiber
 socket.onopen = () => {
     console.log("WebSocket Conectado!");
@@ -85,6 +120,7 @@ btnSaveTag.addEventListener('click', () => {
     // 1. Capturar os valores do formulário
     const tagData = {
         id: document.getElementById('tagId').value,
+        device_id: document.getElementById('tagDevice').value,
         name: document.getElementById('tagName').value,
         address: document.getElementById('tagName').value,
         db_number: parseInt(document.getElementById('tagDb').value),
