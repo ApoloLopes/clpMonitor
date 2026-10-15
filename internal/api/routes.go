@@ -6,39 +6,40 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// SetupRoutes configura todos os endpoints REST da aplicação
-func SetupRoutes(app *fiber.App, store *storage.JSONStorage) {
+// SetupRoutes agora recebe uma função de callback (onConfigChange)
+func SetupRoutes(app *fiber.App, store *storage.JSONStorage, onConfigChange func()) {
 	api := app.Group("/api")
 
-	// Devolve toda a configuração (Dispositivos e Tags)
 	api.Get("/config", func(c *fiber.Ctx) error {
 		return c.JSON(store.GetConfig())
 	})
 
-	// Regista um novo CLP
 	api.Post("/devices", func(c *fiber.Ctx) error {
 		var device models.Device
 		if err := c.BodyParser(&device); err != nil {
-			return c.Status(400).JSON(fiber.Map{"erro": "Formato de dispositivo inválido"})
+			return c.Status(400).JSON(fiber.Map{"erro": "Formato inválido"})
+		}
+		if err := store.AddDevice(device); err != nil {
+			return c.Status(500).JSON(fiber.Map{"erro": "Falha ao gravar"})
 		}
 
-		if err := store.AddDevice(device); err != nil {
-			return c.Status(500).JSON(fiber.Map{"erro": "Falha ao gravar dispositivo"})
-		}
+		// Dispara o Hot-Reload!
+		onConfigChange()
 
 		return c.Status(201).JSON(device)
 	})
 
-	// Regista uma nova Tag
 	api.Post("/tags", func(c *fiber.Ctx) error {
 		var tag models.Tag
 		if err := c.BodyParser(&tag); err != nil {
-			return c.Status(400).JSON(fiber.Map{"erro": "Formato de tag inválido"})
+			return c.Status(400).JSON(fiber.Map{"erro": "Formato inválido"})
+		}
+		if err := store.AddTag(tag); err != nil {
+			return c.Status(500).JSON(fiber.Map{"erro": "Falha ao gravar"})
 		}
 
-		if err := store.AddTag(tag); err != nil {
-			return c.Status(500).JSON(fiber.Map{"erro": "Falha ao gravar tag"})
-		}
+		// Dispara o Hot-Reload!
+		onConfigChange()
 
 		return c.Status(201).JSON(tag)
 	})

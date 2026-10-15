@@ -18,9 +18,9 @@
       "offset": 4,
       "bit": 0,
       "data_type": "REAL",
-      "value": 1036.3,
+      "value": 85.8,
       "quality": true,
-      "timestamp": "2026-10-15T00:46:10.0502003-03:00"
+      "timestamp": "2026-10-15T01:02:21.8449253-03:00"
     },
     {
       "id": "T2",
@@ -32,7 +32,7 @@
       "data_type": "BOOL",
       "value": true,
       "quality": true,
-      "timestamp": "2026-10-15T00:46:10.0502003-03:00"
+      "timestamp": "2026-10-15T01:02:21.8449253-03:00"
     },
     {
       "id": "T3",
@@ -44,7 +44,7 @@
       "data_type": "INT",
       "value": 1750,
       "quality": true,
-      "timestamp": "2026-10-15T00:46:10.0502003-03:00"
+      "timestamp": "2026-10-15T01:02:21.8449253-03:00"
     },
     {
       "id": "T5",
@@ -52,6 +52,18 @@
       "address": "",
       "db_number": 1,
       "offset": 8,
+      "bit": 0,
+      "data_type": "REAL",
+      "value": 276.5,
+      "quality": true,
+      "timestamp": "2026-10-15T01:02:21.8449253-03:00"
+    },
+    {
+      "id": "T6",
+      "name": "Temperatura 3",
+      "address": "",
+      "db_number": 1,
+      "offset": 12,
       "bit": 0,
       "data_type": "REAL",
       "value": null,
