@@ -1,0 +1,62 @@
+{
+  "devices": [
+    {
+      "id": "PLC_01",
+      "name": "Extrusora",
+      "protocol": "s7",
+      "ip_address": "127.0.0.1",
+      "rack": 0,
+      "slot": 2
+    }
+  ],
+  "tags": [
+    {
+      "id": "T1",
+      "name": "Temperatura",
+      "address": "",
+      "db_number": 1,
+      "offset": 4,
+      "bit": 0,
+      "data_type": "REAL",
+      "value": 1036.3,
+      "quality": true,
+      "timestamp": "2026-10-15T00:46:10.0502003-03:00"
+    },
+    {
+      "id": "T2",
+      "name": "Motor_Ligado",
+      "address": "",
+      "db_number": 1,
+      "offset": 0,
+      "bit": 0,
+      "data_type": "BOOL",
+      "value": true,
+      "quality": true,
+      "timestamp": "2026-10-15T00:46:10.0502003-03:00"
+    },
+    {
+      "id": "T3",
+      "name": "Velocidade",
+      "address": "",
+      "db_number": 1,
+      "offset": 2,
+      "bit": 0,
+      "data_type": "INT",
+      "value": 1750,
+      "quality": true,
+      "timestamp": "2026-10-15T00:46:10.0502003-03:00"
+    },
+    {
+      "id": "T5",
+      "name": "Temperatura_2",
+      "address": "",
+      "db_number": 1,
+      "offset": 8,
+      "bit": 0,
+      "data_type": "REAL",
+      "value": null,
+      "quality": false,
+      "timestamp": "0001-01-01T00:00:00Z"
+    }
+  ]
+}

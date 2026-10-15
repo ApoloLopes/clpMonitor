@@ -76,3 +76,46 @@ socket.onmessage = (event) => {
         }
     });
 };
+
+// --- Lógica de Configuração via API REST ---
+
+const btnSaveTag = document.getElementById('btnSaveTag');
+
+btnSaveTag.addEventListener('click', () => {
+    // 1. Capturar os valores do formulário
+    const tagData = {
+        id: document.getElementById('tagId').value,
+        name: document.getElementById('tagName').value,
+        db_number: parseInt(document.getElementById('tagDb').value),
+        offset: parseInt(document.getElementById('tagOffset').value),
+        data_type: document.getElementById('tagDataType').value,
+        bit: parseInt(document.getElementById('tagBit').value) || 0
+    };
+
+    // 2. Enviar via POST para a API do Go
+    fetch('/api/tags', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(tagData)
+    })
+    .then(response => {
+        if (response.ok) {
+            alert('Tag adicionada com sucesso no ficheiro JSON!');
+            
+            // Limpa o formulário e fecha a modal
+            document.getElementById('formAddTag').reset();
+            const modalElement = document.getElementById('addTagModal');
+            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+            modalInstance.hide();
+        } else {
+            alert('Erro ao guardar a Tag. Verifique o console.');
+            console.error('Resposta da API:', response);
+        }
+    })
+    .catch(error => {
+        console.error('Erro de rede ao tentar guardar:', error);
+        alert('Erro de comunicação com o servidor.');
+    });
+});

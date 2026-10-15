@@ -17,19 +17,81 @@
 <nav class="navbar navbar-dark bg-dark mb-4">
     <div class="container">
         <span class="navbar-brand mb-0 h1">🏭 Gateway OT/IT</span>
-        <div class="text-light d-flex align-items-center gap-2">
-            <span>Status da Conexão Web:</span>
-            <span id="ws-status" class="status-dot status-offline"></span>
+        <div class="d-flex align-items-center gap-3">
+            <!-- Botão que abre a Modal -->
+            <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#addTagModal">
+                + Adicionar Tag
+            </button>
+            <div class="text-light d-flex align-items-center gap-2">
+                <span id="ws-status" class="status-dot status-offline"></span>
+            </div>
         </div>
     </div>
 </nav>
 
 <div class="container">
     <div class="row" id="tags-container">
-        <!-- Os cards das tags serão injetados aqui pelo JavaScript -->
+        <!-- Cards injetados aqui -->
     </div>
 </div>
 
+<!-- Modal para Adicionar Tag -->
+<div class="modal fade" id="addTagModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nova Tag (Siemens S7)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formAddTag">
+          <div class="mb-3">
+            <label class="form-label">ID da Tag (Ex: T4)</label>
+            <input type="text" class="form-control" id="tagId" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Nome de Exibição (Ex: Pressao_Oleo)</label>
+            <input type="text" class="form-control" id="tagName" required>
+          </div>
+          <div class="row mb-3">
+            <div class="col">
+              <label class="form-label">Número da DB</label>
+              <input type="number" class="form-control" id="tagDb" value="1" required>
+            </div>
+            <div class="col">
+              <label class="form-label">Offset (Byte)</label>
+              <input type="number" class="form-control" id="tagOffset" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col">
+              <label class="form-label">Tipo de Dado</label>
+              <select class="form-select" id="tagDataType" required>
+                <option value="REAL">REAL (Float 32bits)</option>
+                <option value="INT">INT (16bits)</option>
+                <option value="BOOL">BOOL (Bit)</option>
+              </select>
+            </div>
+            <div class="col">
+              <label class="form-label">Bit (Apenas para BOOL)</label>
+              <input type="number" class="form-control" id="tagBit" value="0">
+            </div>
+          </div>
+          <div class="alert alert-info border-0 py-2 small">
+            Após guardar, reinicie o Gateway no terminal para que o Worker inicie a leitura da nova tag.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="btnSaveTag">Guardar Tag</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts do Bootstrap (necessário para a Modal funcionar) e o nosso JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/app.js"></script>
 </body>
 </html>
