@@ -1,0 +1,78 @@
+// Obtém dinamicamente o IP/Porta atual (permite acessar de outras máquinas na rede)
+const wsUrl = `ws://${window.location.host}/ws`;
+let socket = new WebSocket(wsUrl);
+
+const statusDot = document.getElementById('ws-status');
+const tagsContainer = document.getElementById('tags-container');
+
+// Evento: Conexão estabelecida com o Fiber
+socket.onopen = () => {
+    console.log("WebSocket Conectado!");
+    statusDot.classList.replace('status-offline', 'status-online');
+};
+
+// Evento: Conexão perdida
+socket.onclose = () => {
+    console.log("WebSocket Desconectado.");
+    statusDot.classList.replace('status-online', 'status-offline');
+    // Em um cenário de Pleno, aqui colocaríamos um setTimeout para tentar reconectar (Auto-Reconnect)
+};
+
+// Evento: Mensagem recebida do Go (o nosso Worker enviou o JSON)
+socket.onmessage = (event) => {
+    const tags = JSON.parse(event.data);
+
+    tags.forEach(tag => {
+        // Formata o timestamp vindo do Go (ISO 8601) para hora legível
+        const timeString = new Date(tag.timestamp).toLocaleTimeString();
+        let displayValue = tag.value;
+
+        // Formatação específica para números flutuantes
+        if (typeof tag.value === 'number' && !Number.isInteger(tag.value)) {
+            displayValue = tag.value.toFixed(2);
+        }
+
+        // Verifica se o card desta tag já existe na tela
+        const existingCard = document.getElementById(`card-${tag.id}`);
+
+        if (existingCard) {
+            // Atualiza os dados do card existente (alta performance)
+            const valueElement = document.getElementById(`value-${tag.id}`);
+            const timeElement = document.getElementById(`time-${tag.id}`);
+            const cardBody = document.getElementById(`body-${tag.id}`);
+
+            valueElement.innerText = tag.quality ? displayValue : "ERRO";
+            timeElement.innerText = timeString;
+
+            // Altera a cor se a qualidade da leitura cair
+            if (tag.quality) {
+                cardBody.classList.remove('bg-danger', 'text-white');
+                cardBody.classList.add('bg-white', 'text-dark');
+            } else {
+                cardBody.classList.remove('bg-white', 'text-dark');
+                cardBody.classList.add('bg-danger', 'text-white');
+            }
+
+        } else {
+            // Cria o card pela primeira vez
+            const cardHTML = `
+                <div class="col-md-4 mb-3" id="card-${tag.id}">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <strong>${tag.name}</strong>
+                            <span class="badge bg-secondary">${tag.data_type}</span>
+                        </div>
+                        <div class="card-body bg-white text-dark text-center" id="body-${tag.id}">
+                            <div class="card-value" id="value-${tag.id}">${tag.quality ? displayValue : "ERRO"}</div>
+                        </div>
+                        <div class="card-footer text-muted text-end small">
+                            Atualizado: <span id="time-${tag.id}">${timeString}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Adiciona o novo card ao container principal
+            tagsContainer.insertAdjacentHTML('beforeend', cardHTML);
+        }
+    });
+};

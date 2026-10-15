@@ -4,18 +4,18 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 
+	"github.com/ApoloLopes/clpMonitor/internal/api"
 	"github.com/ApoloLopes/clpMonitor/internal/models"
 	"github.com/ApoloLopes/clpMonitor/internal/plc"
 	"github.com/ApoloLopes/clpMonitor/internal/worker"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/websocket/v2"
 )
 
 func main() {
-	// 1. Configuração do Dispositivo e Tags
+	// 1. Configuração (Hardcoded por enquanto)
 	device := models.Device{
 		ID: "PLC_01", Name: "Extrusora", Protocol: "s7", IPAddress: "127.0.0.1", Rack: 0, Slot: 2,
 	}
@@ -26,53 +26,48 @@ func main() {
 		{ID: "T3", Name: "Velocidade", DBNumber: 1, Offset: 2, DataType: "INT"},
 	}
 
-	// 2. Inicialização do Driver
+	// 2. Inicializa o Hub WebSocket
+	hub := api.NewWSHub()
+	go hub.Run()
+
+	// 3. Inicializa o Driver e Worker do CLP
 	var driver plc.Driver = plc.NewS7Driver(device)
-
-	// Contexto base para conectar
-	connCtx, cancelConn := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancelConn()
-
-	if err := driver.Connect(connCtx); err != nil {
-		log.Fatalf("Erro ao conectar no CLP: %v", err)
+	if err := driver.Connect(context.Background()); err != nil {
+		log.Printf("Aviso: Não conectou no CLP de imediato: %v\n", err)
 	}
 
-	// 3. Criação e disparo do Worker
-	// Configurado para ler a cada 500 milissegundos
-	plcWorker := worker.NewPollingWorker(device, driver, tags, 3000)
+	plcWorker := worker.NewPollingWorker(device, driver, tags, 500)
+	go plcWorker.Start(context.Background())
 
-	// Contexto para controlar o ciclo de vida do Worker (Graceful Shutdown)
-	ctx, cancelAllWorkers := context.WithCancel(context.Background())
-
-	// DISPARA O WORKER EM CONCORRÊNCIA! A thread principal continua executando.
-	go plcWorker.Start(ctx)
-
-	// 4. Lógica para escutar os dados e escutar interrupção do teclado (Ctrl+C)
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	fmt.Println("Sistema rodando. Pressione Ctrl+C para sair.")
-
-	for {
-		select {
-		case data := <-plcWorker.DataChannel:
-			// Recebeu dados frescos do Worker
-			fmt.Printf("\n--- Leitura %s ---\n", time.Now().Format("15:04:05.000"))
-			for _, t := range data {
-				if t.Quality {
-					fmt.Printf("%s: %v\n", t.Name, t.Value)
-				} else {
-					fmt.Printf("%s: BAD QUALITY\n", t.Name)
-				}
-			}
-
-		case <-sigChan:
-			// Usuário apertou Ctrl+C
-			fmt.Println("\nDesligando sistema de forma segura...")
-			cancelAllWorkers()          // Avisa todos os workers para pararem
-			time.Sleep(1 * time.Second) // Dá um tempo para os workers fecharem as conexões
-			fmt.Println("Fui!")
-			return
+	// 4. Goroutine ponte: Escuta o Worker e manda para o Hub WebSocket
+	go func() {
+		for data := range plcWorker.DataChannel {
+			// Repassa as tags lidas para todos os clientes WebSocket conectados
+			hub.Broadcast <- data
 		}
-	}
+	}()
+
+	// 5. Configuração do Servidor Web (Fiber)
+	app := fiber.New()
+
+	// Middleware para garantir que a rota /ws exija Upgrade para WebSocket
+	app.Use("/ws", func(c *fiber.Ctx) error {
+		if websocket.IsWebSocketUpgrade(c) {
+			c.Locals("allowed", true)
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
+	})
+
+	// Rota do WebSocket
+	app.Get("/ws", websocket.New(hub.HandleWS))
+
+	// Rota para testarmos rapidamente se o servidor subiu
+	app.Get("/", func(c *fiber.Ctx) error {
+		return c.SendString("Servidor PLC Gateway rodando! Acesse via WebSocket em ws://localhost:8080/ws")
+	})
+	// Serve todos os arquivos da pasta "web" na raiz do site
+	app.Static("/", "./web")
+	fmt.Println("Iniciando servidor web na porta 8080...")
+	log.Fatal(app.Listen(":8080"))
 }
