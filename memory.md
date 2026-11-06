@@ -1,44 +1,63 @@
-﻿# Memory – clpMonitor (PLC Gateway)
+# Memory – clpMonitor (PLC Gateway)
 
-## Visão geral
-Gateway em Go que faz a ponte entre CLPs Siemens (S7) e Rockwell (CIP/EtherNet-IP) e um dashboard web em tempo real. Módulo: `github.com/ApoloLopes/clpMonitor`.
+## Visão Geral
+Gateway industrial em Go de alta performance que conecta CLPs Siemens (S7) e Rockwell (CIP/EtherNet-IP) a uma aplicação web moderna em tempo real, sem dependência de middlewares pesados ou servidores OPC intermediários.
+Módulo Go: `github.com/ApoloLopes/clpMonitor`.
 
-## Stack
-- Backend: Go, Fiber v2 (REST + estáticos), `gofiber/websocket/v2`
-- Drivers: `robinson/gos7` (Siemens), `danomagnum/gologix` (Rockwell)
-- Frontend: HTML/CSS/Vanilla JS sem CDN (`web/index.html`, `web/css/style.css`, `web/js/app.js`): páginas Monitoramento, Dispositivos, Tags e Rede (hash routing, diálogos nativos <dialog>)
-- Persistência: arquivo JSON (`gateway_config.json`)
+## Stack Tecnológica
+- **Backend:** Go (1.21+), Fiber v2 (REST e arquivos estáticos), `gofiber/websocket/v2`.
+- **Drivers de Comunicação:** `robinson/gos7` (Siemens S7Comm), `danomagnum/gologix` (Rockwell CIP).
+- **Rede do Host:** Pacote próprio `internal/netmgr` utilizando `net.Interfaces`, `sysfs` e comandos de rede Linux (`ip`) para configuração em tempo real.
+- **Frontend:** SPA desenvolvida em HTML5 / CSS3 / Vanilla JS puro, offline-first (sem dependência de CDNs ou bibliotecas externas), utilizando elementos nativos `<dialog>` para modais e hash routing (`#dashboard`, `#devices`, `#tags`, `#network`).
+- **Persistência:** Ficheiro JSON com bloqueio seguro via `sync.RWMutex` (`gateway_config.json`).
 
-## Estrutura
-- `cmd/server/main.go` – entrada: storage → WSHub → Manager → Fiber (porta **8080**). Se a config estiver vazia, cria o device `PLC_01` (s7, 127.0.0.1, rack 0, slot 2) e a tag `T1`.
-- `internal/models/models.go` – `Tag` (ID, DeviceID, Name, Address, DBNumber, Offset, Bit, DataType, Value, Quality, Timestamp) e `Device` (ID, Name, Protocol "s7"|"cip", IPAddress, Rack, Slot).
-- `internal/plc/` – interface `Driver` (`Connect(ctx)`, `Disconnect()`, `ReadTags(*[]Tag)` in-place); `s7_driver.go`, `rockwell_driver.go`.
-- `internal/worker/worker.go` – `PollingWorker`: ticker por dispositivo, lê tags, envia cópia ao `DataChannel` de forma não-bloqueante (descarta se ninguém ouvir).
-- `internal/worker/manager.go` – `Manager`: `StartAll` (um worker + goroutine ponte por device, intervalo fixo 500 ms), `StopAll` (cancela contexto), `Reload` (hot-reload = Stop + Start).
-- `internal/api/routes.go` – `GET /api/config`, `POST /api/devices`, `POST /api/tags`; cada POST grava e chama o callback `onConfigChange` (Manager.Reload).
-- `internal/api/ws_hub.go` – `WSHub`: registra/remove clientes, `Broadcast chan []models.Tag` enviado a todos os navegadores; endpoint `/ws`.
-- `internal/storage/json_storage.go` – `JSONStorage` (`GetConfig`, `AddDevice`, `AddTag`).
+## Arquitetura e Estrutura
+- `cmd/server/main.go`: Entrada principal. Inicializa o storage JSON, o hub de WebSockets (`WSHub`), o orquestrador de workers (`Manager`), registra rotas da API com suporte a hot-reload e levanta o servidor Fiber na porta `8080`.
+- `internal/models/models.go`:
+  - `Device`: ID, Name, Protocol ("s7" ou "cip"), IPAddress, Rack, Slot.
+  - `Tag`: ID, DeviceID, Name, Address, DBNumber, Offset, Bit, DataType ("BOOL", "INT", "REAL"), Value, Quality, Timestamp.
+- `internal/plc/`:
+  - Interface `Driver`: métodos `Connect(ctx)`, `Disconnect()`, `ReadTags(*[]Tag)`.
+  - `s7_driver.go`: Suporte a leitura Siemens S7 (`gos7`), incluindo leitura bit a bit de DBs (`GetBoolAt`).
+  - `rockwell_driver.go`: Suporte a leitura CIP (`gologix`) por tag simbólica.
+- `internal/worker/`:
+  - `worker.go` (`PollingWorker`): Ciclo periódico de leitura por CLP em goroutine dedicada; notifica alterações de tags no canal de dados e loga no console apenas quando houver transição de valor ou estado de qualidade.
+  - `manager.go` (`Manager`): Gerencia ciclo de vida dos workers com controle de concorrência (`statusMu`, `reloadMu`), monitora estados de conexão ("online", "offline", "connecting", "unknown") e executa Hot-Reload (`Reload`) de forma atômica e graciosa.
+- `internal/netmgr/netmgr.go`: Leitura de portas de rede (MAC, MTU, Carrier/Link, Velocidade, Duplex, Bytes RX/TX, Gateway) e comandos de alteração de estado (`SetState`), endereço estático (`SetStatic`), inclusão (`AddAddress`), edição em tempo real (`EditAddress`) e exclusão (`RemoveAddress`).
+- `internal/api/`:
+  - `routes.go`: Endpoints REST com validações rigorosas (409 para duplicados, 400 para parâmetros inválidos) e clonagem de buffers de memória do Fiber (`param()` / `strings.Clone()`).
+  - `ws_hub.go`: Hub WebSocket distribuindo broadcasts de leitura em tempo real para os clientes conectados.
+  - `routes_test.go`: Testes unitários cobrindo o ciclo de vida completo de dispositivos, tags e rotas de rede.
+- `web/`:
+  - `index.html`: Layout da interface, barra lateral de navegação e diálogos modais nativos.
+  - `css/style.css`: Estilização escura moderna e responsiva.
+  - `js/app.js`: Roteamento por hash, conexão WebSocket com auto-reconnect, sincronização dinâmica de formulários e gerenciamento de chamadas REST.
+- `build_arm.bat`: Script de compilação automatizada com flags de redução de tamanho (`-ldflags="-s -w"`) visando arquitetura Linux ARMv7 (`GOOS=linux GOARCH=arm GOARM=7`).
 
-## Fluxo de dados
-CLP → Driver.ReadTags → PollingWorker (500 ms) → DataChannel → goroutine ponte → `hub.Broadcast` → WebSocket `/ws` → `app.js`.
+## Rotas REST
+- `GET /api/config`: Retorna a configuração completa (dispositivos e tags).
+- `GET /api/devices/status`: Retorna o estado de comunicação em tempo real de cada CLP.
+- `POST /api/devices`: Cria novo CLP.
+- `PUT /api/devices/:id`: Atualiza parâmetros do CLP e dispara hot-reload.
+- `DELETE /api/devices/:id`: Exclui CLP e cascateia a remoção de todas as suas tags associadas.
+- `POST /api/tags`: Cria nova tag vinculada a um CLP.
+- `PUT /api/tags/:id`: Atualiza configuração da tag.
+- `DELETE /api/tags/:id`: Exclui a tag.
+- `GET /api/network/interfaces`: Lista detalhes e estatísticas das interfaces de rede da máquina.
+- `POST /api/network/interfaces/:name/state`: Liga ou desliga interface no Linux.
+- `PUT /api/network/interfaces/:name/ipv4`: Define IPv4 estático único.
+- `POST /api/network/interfaces/:name/addresses`: Adiciona IP adicional.
+- `PUT /api/network/interfaces/:name/addresses`: Edita IP existente em tempo real.
+- `DELETE /api/network/interfaces/:name/addresses`: Remove IP especificado da interface.
 
-## Pontos de atenção / possíveis melhorias
-- Intervalo de polling fixo (500 ms) no Manager; não configurável.
-- Sem endpoints de update/delete para devices e tags (apenas POST).
-- `Reload` não sincroniza com o fim dos workers antigos (`cancelFunc` sem sincronização/mutex).
-- Broadcast do hub é global: o payload é um `[]Tag` sem identificar o device de origem além de `Tag.DeviceID`.
-- `go.mod` marca todas as dependências como `// indirect` e declara `go 1.27.2` (conferir); README cita Go 1.21+.
-- O README ainda usa o nome de pasta `plc-gateway/`.
-- Sem autenticação nem testes automatizados.
-
-## Como rodar
-```
-go run ./cmd/server
-```
-Abrir `http://localhost:8080`.
-
-
-## Atualização
-- API agora tem PUT/DELETE de devices e tags (com validação, 409 em ID duplicado, exclusão de device apaga suas tags), GET /api/devices/status e /api/network/interfaces (+ state, ipv4, addresses). Pacote internal/netmgr: leitura via net.Interfaces + sysfs; escrita via comando ip (somente Linux, requer root, não persiste após reboot).
-- Fiber reaproveita buffers: copiar c.Params()/c.Query() (strings.Clone) antes de guardar.
-- Testes: go test ./internal/...
+## Procedimentos de Teste e Compilação
+- Testes unitários do backend:
+  ```bash
+  go test ./internal/...
+  ```
+- Execução local para testes:
+  ```bash
+  go run ./cmd/server
+  ```
+- Build para Linux ARM:
+  Executar `build_arm.bat` ou via PowerShell com variáveis de ambiente dedicadas.
