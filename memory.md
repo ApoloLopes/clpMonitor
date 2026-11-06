@@ -1,4 +1,4 @@
-# Memory – clpMonitor (PLC Gateway)
+﻿# Memory – clpMonitor (PLC Gateway)
 
 ## Visão geral
 Gateway em Go que faz a ponte entre CLPs Siemens (S7) e Rockwell (CIP/EtherNet-IP) e um dashboard web em tempo real. Módulo: `github.com/ApoloLopes/clpMonitor`.
@@ -6,7 +6,7 @@ Gateway em Go que faz a ponte entre CLPs Siemens (S7) e Rockwell (CIP/EtherNet-I
 ## Stack
 - Backend: Go, Fiber v2 (REST + estáticos), `gofiber/websocket/v2`
 - Drivers: `robinson/gos7` (Siemens), `danomagnum/gologix` (Rockwell)
-- Frontend: HTML/CSS/Vanilla JS (`web/index.html`, `web/js/app.js`) servido de `./web`
+- Frontend: HTML/CSS/Vanilla JS sem CDN (`web/index.html`, `web/css/style.css`, `web/js/app.js`): páginas Monitoramento, Dispositivos, Tags e Rede (hash routing, diálogos nativos <dialog>)
 - Persistência: arquivo JSON (`gateway_config.json`)
 
 ## Estrutura
@@ -37,3 +37,8 @@ go run ./cmd/server
 ```
 Abrir `http://localhost:8080`.
 
+
+## Atualização
+- API agora tem PUT/DELETE de devices e tags (com validação, 409 em ID duplicado, exclusão de device apaga suas tags), GET /api/devices/status e /api/network/interfaces (+ state, ipv4, addresses). Pacote internal/netmgr: leitura via net.Interfaces + sysfs; escrita via comando ip (somente Linux, requer root, não persiste após reboot).
+- Fiber reaproveita buffers: copiar c.Params()/c.Query() (strings.Clone) antes de guardar.
+- Testes: go test ./internal/...

@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -36,6 +37,7 @@ func (w *PollingWorker) Start(ctx context.Context) {
 	// Ticker é um relógio que "apita" a cada intervalo definido
 	ticker := time.NewTicker(w.Interval)
 	defer ticker.Stop()
+	last := map[string]string{}
 
 	for {
 		select {
@@ -50,6 +52,20 @@ func (w *PollingWorker) Start(ctx context.Context) {
 			err := w.Driver.ReadTags(&w.Tags)
 			if err != nil {
 				log.Printf("[Worker %s] Erro de leitura: %v", w.Device.Name, err)
+			} else {
+				// Log apenas quando o valor/qualidade de uma tag muda (evita inundar o console a 500 ms)
+				for _, t := range w.Tags {
+					cur := fmt.Sprintf("%v|%v", t.Quality, t.Value)
+					if last[t.ID] == cur {
+						continue
+					}
+					last[t.ID] = cur
+					if t.Quality {
+						log.Printf("[Worker %s] Tag: %s | Tipo: %s | Valor: %v | Qualidade: OK", w.Device.Name, t.Name, t.DataType, t.Value)
+					} else {
+						log.Printf("[Worker %s] Tag: %s | Tipo: %s | Qualidade: FALHA", w.Device.Name, t.Name, t.DataType)
+					}
+				}
 			}
 
 			// Cria uma cópia das tags para enviar pelo canal (evita condição de corrida)

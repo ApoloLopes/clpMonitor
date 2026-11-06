@@ -5,6 +5,7 @@
 *.dll
 *.so
 *.dylib
+clpMonitor
 
 # Arquivos de teste e profile
 *.test

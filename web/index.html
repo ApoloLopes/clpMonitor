@@ -3,156 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PLC Gateway Monitor</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .status-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-        .status-online { background-color: #198754; box-shadow: 0 0 8px #198754; }
-        .status-offline { background-color: #dc3545; box-shadow: 0 0 8px #dc3545; }
-        .card-value { font-size: 2rem; font-weight: bold; font-family: monospace; }
-    </style>
+    <title>PLC Gateway</title>
+    <link rel="stylesheet" href="/css/style.css">
 </head>
-<body class="bg-light">
+<body>
 
-<nav class="navbar navbar-dark bg-dark mb-4">
-    <div class="container">
-        <span class="navbar-brand mb-0 h1">🏭 Gateway OT/IT</span>
-        <div class="d-flex align-items-center gap-3">
-            <!-- NOVO: Botão para Adicionar Dispositivo -->
-            <button class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#addDeviceModal">
-            + Adicionar Dispositivo
-            </button>
-            <!-- Botão que abre a Modal -->
-            <button class="btn btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#addTagModal">
-                + Adicionar Tag
-            </button>
-            <div class="text-light d-flex align-items-center gap-2">
-                <span id="ws-status" class="status-dot status-offline"></span>
+<aside class="sidebar">
+    <div class="brand">🏭 <span>PLC Gateway</span></div>
+    <nav id="nav">
+        <a href="#dashboard" data-page="dashboard">📊 <span>Monitoramento</span></a>
+        <a href="#devices" data-page="devices">🖧 <span>Dispositivos</span></a>
+        <a href="#tags" data-page="tags">🏷️ <span>Tags</span></a>
+        <a href="#network" data-page="network">🌐 <span>Rede</span></a>
+    </nav>
+    <div class="sidebar-foot">
+        <span id="ws-dot" class="dot dot-offline"></span>
+        <span id="ws-text">Tempo real: desconectado</span>
+    </div>
+</aside>
+
+<main class="content">
+
+    <!-- ===== Monitoramento ===== -->
+    <section id="page-dashboard" class="page">
+        <header class="page-head">
+            <h1>Monitoramento</h1>
+            <div class="toolbar">
+                <select id="dashDeviceFilter" aria-label="Filtrar por dispositivo"></select>
             </div>
+        </header>
+        <div id="dashSummary" class="summary"></div>
+        <div id="dashGroups"></div>
+    </section>
+
+    <!-- ===== Dispositivos ===== -->
+    <section id="page-devices" class="page">
+        <header class="page-head">
+            <h1>Dispositivos</h1>
+            <div class="toolbar">
+                <button class="btn primary" data-action="device-new">+ Novo dispositivo</button>
+            </div>
+        </header>
+        <div class="panel">
+            <table class="table">
+                <thead><tr><th>Estado</th><th>ID</th><th>Nome</th><th>Protocolo</th><th>IP</th><th>Rack/Slot</th><th>Tags</th><th class="right">Ações</th></tr></thead>
+                <tbody id="devicesBody"></tbody>
+            </table>
         </div>
-    </div>
-</nav>
+    </section>
 
-<div class="container">
-    <div class="row" id="tags-container">
-        <!-- Cards injetados aqui -->
-    </div>
-</div>
+    <!-- ===== Tags ===== -->
+    <section id="page-tags" class="page">
+        <header class="page-head">
+            <h1>Tags</h1>
+            <div class="toolbar">
+                <input id="tagSearch" type="search" placeholder="Buscar por nome ou ID…">
+                <select id="tagDeviceFilter" aria-label="Filtrar por dispositivo"></select>
+                <button class="btn primary" data-action="tag-new">+ Nova tag</button>
+            </div>
+        </header>
+        <div class="panel">
+            <table class="table">
+                <thead><tr><th>Valor atual</th><th>ID</th><th>Nome</th><th>Dispositivo</th><th>Tipo</th><th>Endereço</th><th class="right">Ações</th></tr></thead>
+                <tbody id="tagsBody"></tbody>
+            </table>
+        </div>
+    </section>
 
-<!-- Modal para Adicionar Tag -->
-<div class="modal fade" id="addTagModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Nova Tag (Siemens S7)</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="formAddTag">
-          <div class="mb-3">
-            <label class="form-label">ID da Tag (Ex: T4)</label>
-            <input type="text" class="form-control" id="tagId" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Dispositivo (CLP)</label>
-            <select class="form-select" id="tagDevice" required>
-              <!-- As opções serão preenchidas automaticamente pelo JavaScript -->
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Nome de Exibição (Ex: Pressao_Oleo)</label>
-            <input type="text" class="form-control" id="tagName" required>
-          </div>
-          <div class="row mb-3">
-            <div class="col">
-              <label class="form-label">Número da DB</label>
-              <input type="number" class="form-control" id="tagDb" value="1" required>
+    <!-- ===== Rede ===== -->
+    <section id="page-network" class="page">
+        <header class="page-head">
+            <h1>Portas de rede da plataforma</h1>
+            <div class="toolbar">
+                <label class="check"><input type="checkbox" id="netShowVirtual"> Mostrar virtuais/loopback</label>
+                <button class="btn" data-action="net-refresh">↻ Atualizar</button>
             </div>
-            <div class="col">
-              <label class="form-label">Offset (Byte)</label>
-              <input type="number" class="form-control" id="tagOffset" required>
-            </div>
-          </div>
-          <div class="row mb-3">
-            <div class="col">
-              <label class="form-label">Tipo de Dado</label>
-              <select class="form-select" id="tagDataType" required>
-                <option value="REAL">REAL (Float 32bits)</option>
-                <option value="INT">INT (16bits)</option>
-                <option value="BOOL">BOOL (Bit)</option>
-              </select>
-            </div>
-            <div class="col">
-              <label class="form-label">Bit (Apenas para BOOL)</label>
-              <input type="number" class="form-control" id="tagBit" value="0">
-            </div>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="btnSaveTag">Guardar Tag</button>
-      </div>
-    </div>
-  </div>
-</div>
+        </header>
+        <div id="netBanner"></div>
+        <div id="netGrid" class="net-grid"></div>
+    </section>
+</main>
 
-<!-- Modal para Adicionar Dispositivo -->
-<div class="modal fade" id="addDeviceModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Novo Dispositivo (CLP)</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="formAddDevice">
-          <div class="row mb-3">
-            <div class="col">
-              <label class="form-label">ID do Dispositivo</label>
-              <input type="text" class="form-control" id="devId" placeholder="Ex: PLC_02" required>
-            </div>
-            <div class="col">
-              <label class="form-label">Nome / Máquina</label>
-              <input type="text" class="form-control" id="devName" placeholder="Ex: Misturador" required>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Protocolo / Marca</label>
-            <select class="form-select" id="devProtocol" required>
-              <option value="s7">Siemens (S7Comm)</option>
-              <option value="cip">Rockwell (CIP / EtherNet/IP) - Em breve</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Endereço IP</label>
-            <input type="text" class="form-control" id="devIp" placeholder="192.168.0.10" required>
-          </div>
-          <div class="row mb-3" id="siemensConfig">
-            <div class="col">
-              <label class="form-label">Rack</label>
-              <input type="number" class="form-control" id="devRack" value="0">
-            </div>
-            <div class="col">
-              <label class="form-label">Slot</label>
-              <input type="number" class="form-control" id="devSlot" value="1">
-            </div>
-          </div>
-          <div class="text-muted small">
-            * Para S7-1200/1500, usa Rack 0, Slot 1. Para S7-300, geralmente Rack 0, Slot 2.
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-        <button type="button" class="btn btn-info text-white" id="btnSaveDevice">Guardar Dispositivo</button>
-      </div>
-    </div>
-  </div>
-</div>
+<div id="toasts" aria-live="polite"></div>
 
-<!-- Scripts do Bootstrap (necessário para a Modal funcionar) e o nosso JS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- ===== Diálogo: dispositivo ===== -->
+<dialog id="dlgDevice">
+    <form method="dialog" id="formDevice" autocomplete="off">
+        <h2 id="devTitle">Novo dispositivo</h2>
+        <div class="grid2">
+            <label>ID <input id="devId" required placeholder="PLC_02"></label>
+            <label>Nome / máquina <input id="devName" required placeholder="Misturador"></label>
+            <label>Protocolo
+                <select id="devProtocol">
+                    <option value="s7">Siemens (S7Comm)</option>
+                    <option value="cip">Rockwell (CIP / EtherNet/IP)</option>
+                </select>
+            </label>
+            <label>Endereço IP <input id="devIp" required placeholder="192.168.0.10"></label>
+            <label class="s7-only">Rack <input id="devRack" type="number" min="0" value="0"></label>
+            <label class="s7-only">Slot <input id="devSlot" type="number" min="0" value="1"></label>
+        </div>
+        <p class="hint s7-only">S7-1200/1500: Rack 0, Slot 1. S7-300: normalmente Rack 0, Slot 2.</p>
+        <p class="form-error" id="devError"></p>
+        <div class="dlg-actions">
+            <button type="button" class="btn" data-action="dlg-close">Cancelar</button>
+            <button type="submit" class="btn primary">Guardar</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- ===== Diálogo: tag ===== -->
+<dialog id="dlgTag">
+    <form method="dialog" id="formTag" autocomplete="off">
+        <h2 id="tagTitle">Nova tag</h2>
+        <div class="grid2">
+            <label>ID <input id="tagId" required placeholder="T10"></label>
+            <label>Nome de exibição <input id="tagName" required placeholder="Pressao_Oleo"></label>
+            <label class="span2">Dispositivo <select id="tagDevice" required></select></label>
+            <label>Tipo de dado
+                <select id="tagType">
+                    <option value="REAL">REAL (float 32 bits)</option>
+                    <option value="INT">INT (16 bits)</option>
+                    <option value="BOOL">BOOL (bit)</option>
+                </select>
+            </label>
+            <label class="s7-only bool-only">Bit (0–7) <input id="tagBit" type="number" min="0" max="7" value="0"></label>
+            <label class="s7-only">DB <input id="tagDb" type="number" min="0" value="1"></label>
+            <label class="s7-only">Offset (byte) <input id="tagOffset" type="number" min="0" value="0"></label>
+            <label class="cip-only span2">Nome da tag no CLP (Rockwell) <input id="tagAddress" placeholder="Motor_Speed"></label>
+        </div>
+        <p class="form-error" id="tagError"></p>
+        <div class="dlg-actions">
+            <button type="button" class="btn" data-action="dlg-close">Cancelar</button>
+            <button type="submit" class="btn primary">Guardar</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- ===== Diálogo: rede (IP) ===== -->
+<dialog id="dlgNet">
+    <form method="dialog" id="formNet" autocomplete="off">
+        <h2 id="netTitle">Configurar IP</h2>
+        <input type="hidden" id="netIface">
+        <input type="hidden" id="netMode">
+        <input type="hidden" id="netOldAddr">
+        <p class="hint" id="netModeHint"></p>
+        <div class="grid2">
+            <label>Endereço (CIDR) <input id="netAddr" required placeholder="192.168.0.10/24"></label>
+            <label>Gateway (opcional) <input id="netGw" placeholder="192.168.0.1"></label>
+        </div>
+        <p class="form-error" id="netError"></p>
+        <div class="dlg-actions">
+            <button type="button" class="btn" data-action="dlg-close">Cancelar</button>
+            <button type="submit" class="btn primary">Aplicar</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- ===== Diálogo: confirmação ===== -->
+<dialog id="dlgConfirm">
+    <form method="dialog">
+        <h2 id="cfTitle">Confirmar</h2>
+        <p id="cfText"></p>
+        <div class="dlg-actions">
+            <button value="cancel" class="btn">Cancelar</button>
+            <button value="ok" class="btn danger" id="cfOk">Confirmar</button>
+        </div>
+    </form>
+</dialog>
+
 <script src="/js/app.js"></script>
 </body>
 </html>

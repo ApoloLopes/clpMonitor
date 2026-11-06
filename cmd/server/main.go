@@ -24,7 +24,7 @@ func main() {
 	if len(cfg.Devices) == 0 {
 		device := models.Device{ID: "PLC_01", Name: "Extrusora", Protocol: "s7", IPAddress: "127.0.0.1", Rack: 0, Slot: 2}
 		store.AddDevice(device)
-		store.AddTag(models.Tag{ID: "T1", Name: "Temperatura", DBNumber: 1, Offset: 4, DataType: "REAL"})
+		store.AddTag(models.Tag{ID: "T1", DeviceID: "PLC_01", Name: "Temperatura", DBNumber: 1, Offset: 4, DataType: "REAL"})
 	}
 
 	// 2. Hub WebSockets
@@ -39,10 +39,10 @@ func main() {
 	manager.StartAll()
 
 	// 4. Servidor Web
-	app := fiber.New()
+	app := fiber.New(fiber.Config{UnescapePath: true})
 
 	// Passamos o manager.Reload como callback para a API
-	api.SetupRoutes(app, store, manager.Reload)
+	api.SetupRoutes(app, store, manager.Reload, manager.GetStatuses)
 
 	app.Use("/ws", func(c *fiber.Ctx) error {
 		if websocket.IsWebSocketUpgrade(c) {
