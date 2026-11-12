@@ -60,4 +60,21 @@ Módulo Go: `github.com/ApoloLopes/clpMonitor`.
   go run ./cmd/server
   ```
 - Build para Linux ARM:
-  Executar `build_arm.bat` ou via PowerShell com variáveis de ambiente dedicadas.
+  - Windows: `build_arm.bat` (ARMv7 / 32 bits).
+  - Linux: `./build_raspberry.sh` (padrão ARMv7 32 bits; `ARCH=arm64 ./build_raspberry.sh` para 64 bits). Pausa no final, pensado para duplo clique.
+  - Manual 64 bits: `CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o clpMonitor cmd/server/main.go`
+
+## Ambiente de Desenvolvimento
+- `go.mod` exige Go 1.27.2. Instalado em `~/.local/go` (sem sudo); o PATH foi ajustado no fim do `~/.bashrc`. O Go antigo (1.26.0) segue em `/usr/local/go`.
+
+## Implantação (Raspberry Pi 3 B v1.2)
+- SO: Raspberry Pi OS Lite 64 bits (binário `linux/arm64`, estático, ~8,6 MB). Recomendação geral: Lite, sem interface gráfica.
+- Host: `192.168.1.160`, usuário `iotpi`. Acesso web: `http://192.168.1.160:8080`.
+- Pasta no Pi: `/home/iotpi/clpMonitor/` com `clpMonitor` (binário), `gateway_config.json` e `web/`. Transferido via `scp`.
+- Inicialização automática: serviço `systemd` `/etc/systemd/system/clpmonitor.service` (`User=iotpi`, `WorkingDirectory=/home/iotpi/clpMonitor`, `Restart=always`, `RestartSec=5s`, habilitado no boot).
+- Comandos úteis no Pi:
+  - `sudo systemctl status clpmonitor`
+  - `sudo systemctl restart clpmonitor` (após mudar `gateway_config.json`)
+  - `journalctl -u clpmonitor -f`
+- Para atualizar: recompilar, enviar o binário por `scp` e reiniciar o serviço.
+- Observação: no primeiro boot os CLPs do config de exemplo (127.0.0.x) falham a conexão, o que é esperado até configurar os IPs reais.
